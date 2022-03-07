@@ -1,5 +1,5 @@
 import React, {Component} from 'react';
-import {View, Text, FlatList, Button, Alert} from 'react-native';
+import {View, Text, FlatList, Button} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
@@ -9,14 +9,7 @@ class Friends extends Component {
 
     this.state = {
       isLoading: true,
-      listData: [],
-      listOfFriends: [],
-      dataList:[],
-      id: '',
-      first_name: '',
-      last_name: '',
-      password: '',
-      email: ''
+      friendRequestList: []
 
     }
   }
@@ -38,7 +31,8 @@ class Friends extends Component {
     return fetch("http://localhost:3333/api/1.0.0/friendrequests", {
            method: 'get',
           'headers': {
-            'X-Authorization':  token
+            'X-Authorization':  token,
+            'Content-Type': 'application/json'
           }
         })
         .then((response) => {
@@ -46,6 +40,8 @@ class Friends extends Component {
                 return response.json()
             }else if(response.status === 401){
               this.props.navigation.navigate("Login");
+            }else if(response.status === 500){
+              console.log("Server Error")
             }else{
                 throw 'Something went wrong';
             }
@@ -53,7 +49,7 @@ class Friends extends Component {
         .then((responseJson) => {
           this.setState({
             isLoading: false,
-            listData: responseJson
+            friendRequestList: responseJson
           })
         })
         .catch((error) => {
@@ -61,85 +57,60 @@ class Friends extends Component {
         })
   }
 
-  addFriendFunction = async () => {
-
-    let to_send = {
-      id: parseInt(this.state.id),
-      first_name: this.state.first_name,
-      last_name: this.state.last_name,
-      email: this.state.email
-    };
+  addFriendFunction = async (userId) => {
 
     const token = await AsyncStorage.getItem('@session_token');
-    const userId = await AsyncStorage.getItem('@session_id');
-    return fetch("http://localhost:3333/api/1.0.0/user/" + userId + "/friends", {
+    //const userId = await AsyncStorage.getItem('@session_id');
+    return fetch("http://localhost:3333/api/1.0.0/friendrequests/" + userId , {
         method: 'post',
           'headers': {
-            'X-Authorization':  token,
-            'Content-Type': 'application/json'
+            'X-Authorization':  token
           },
-          body: JSON.stringify(to_send)
+          
         })
         .then((response) => {
-          Alert.alert("Item added");
-          console.log("getting data stage 1")
-          //this.retrieveData();
-          //this.getData();
-          return response.json()
-
+          if(response.status === 200){
+            this.getData()
+          }else if (response.status === 401){
+            this.props.nagivation.navigate("login");
+          }else if (response.status === 404){
+            this.props.nagivation.navigate("Nothing has been found");
+          }else{
+            throw 'something went wrong';
+          }
         })
         .catch((error) => {
           console.log(error);
         })
       }
+  
+  removeFriendFunction = async (userId) => {
 
-  retrieveData = async () => {
-    console.log("getting data...");
-    return fetch("http://localhost:3333/api/1.0.0/friendrequests")
-    .then((response) => response.json())
-    .then((responseJson) => {
-        console.log(responseJson);
-        this.setState({
-            isLoading: false,
-            dataList: responseJson
-        })
-    })
-    .catch((error) => {
-        console.log(error);
-    });
-    console.log("data got");
-  }
-
-  listOfFriends = async () => {
-
-    const value = await AsyncStorage.getItem('@session_token');
-    const userId = await AsyncStorage.getItem('@session_id');
-    return fetch("http://localhost:3333/api/1.0.0/user/" + userId + "/friends", {
-            method: 'get',
-          'headers': {
-            'X-Authorization':  value
+        const token = await AsyncStorage.getItem('@session_token');
+        //const userId = await AsyncStorage.getItem('@session_id');
+        return fetch("http://localhost:3333/api/1.0.0/friendrequests/" + userId, {
+            method: 'Delete',
+              'headers': {
+                'X-Authorization':  token
+              },
+              
+            })
+            .then((response) => {
+              if(response.status === 200){
+                this.getData()
+              }else if (response.status === 401){
+                this.props.nagivation.navigate("login");
+              }else if (response.status === 404){
+                this.props.nagivation.navigate("Nothing has been found");
+              }else{
+                throw 'something went wrong';
+              }
+            })
+            .catch((error) => {
+              console.log(error);
+            })
           }
-        })
-        .then((response) => {
-            if(response.status === 200){
-                return response.json()
-            }else if(response.status === 401){
-              this.props.navigation.navigate("Login");
-            }else{
-                throw 'Something went wrong';
-            }
-        })
-        .then((responseJson) => {
-          this.setState({
-            isLoading: false,
-            listData: responseJson
-          })
-        })
-        .catch((error) => {
-            console.log(error);
-        })
-  }
-
+ 
   checkLoggedIn = async () => {
     const token = await AsyncStorage.getItem('@session_token');
     if (token == null) {
@@ -167,17 +138,21 @@ class Friends extends Component {
       return (
         <View>
           <FlatList
-                data={this.state.listData}
+                data={this.state.friendRequestList}
                 renderItem={({item}) => (
                     <View>
                       <Text>Friend requests from: {item.first_name} {item.last_name} {item.email}</Text>
                       <Text>List of friends: {item.first_name} {item.last_name}</Text>
                       <Button
-                        title="Add Friend"
-                        onPress={() => this.addFriendFunction()}/>
+                        title="Add Friend request"
+                        onPress={() => this.addFriendFunction(item.user_id)}/>
+
+                      <Button
+                        title="Delete Friend request"
+                        onPress={() => this.removeFriendFunction(item.user_id)}/>
                     </View>
                 )}
-                keyExtractor={(item,index) => item.user_id.toString()}
+                //keyExtractor={(item,index) => item.user_id.toString()}
               />
         </View>
       );
