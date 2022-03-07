@@ -1,22 +1,16 @@
 import React, {Component} from 'react';
-import {View, Text, StyleSheet, Button, Image} from 'react-native';
+import {View, Text, FlatList, Button} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import Update from "../Component/Update";
 
-class ProfilePicture extends Component {
+class AllFriends extends Component {
   constructor(props){
     super(props);
 
     this.state = {
       isLoading: true,
-      photo: null,
-      listPost: [],
-      postData: "",
-      userInfo: [],
-      first_name:"",
-      last_name:"",
-      userDetails: []
+      AllFriendsList: []
+
     }
   }
 
@@ -26,8 +20,6 @@ class ProfilePicture extends Component {
     });
   
     this.getData();
-    this.getPhoto();
-    
   }
 
   componentWillUnmount() {
@@ -37,7 +29,7 @@ class ProfilePicture extends Component {
   getData = async () => {
     const token = await AsyncStorage.getItem('@session_token');
     const userId = await AsyncStorage.getItem('@session_id');
-    return fetch("http://localhost:3333/api/1.0.0/user/" + userId, {
+    return fetch("http://localhost:3333/api/1.0.0/user/" + userId +"/friends", {
            method: 'get',
           'headers': {
             'X-Authorization':  token,
@@ -46,21 +38,27 @@ class ProfilePicture extends Component {
         })
         .then((response) => {
             if(response.status === 200){
-                console.log(response);
                 return response.json()
             }else if(response.status === 401){
               this.props.navigation.navigate("Login");
-            }else if(response.status === 404){
-              console.log("Error with server")
-            }else{
+            }else if(response.status === 403){
+              console.log("You can only view friends of yourself or your friends")
+            }
+            else if(response.status === 404){
+                console.log("You have no friends")
+            }
+            else if(response.status === 500){
+                console.log("Error with server")
+            }
+            
+            else{
                 throw 'Something went wrong';
             }
         })
         .then((responseJson) => {
-          console.log(responseJson);
           this.setState({
             isLoading: false,
-            userDetails: responseJson,
+            AllFriendsList: responseJson
           })
         })
         .catch((error) => {
@@ -68,7 +66,7 @@ class ProfilePicture extends Component {
         })
   }
 
-  checkLoggedIn = async () => {
+ checkLoggedIn = async () => {
     const token = await AsyncStorage.getItem('@session_token');
     if (token == null) {
         this.props.navigation.navigate('Login');
@@ -92,21 +90,21 @@ class ProfilePicture extends Component {
         </View>
       );
     }else{
-      console.log(this.state.listData)
       return (
-             
-        <Image
-                  style={{ width: size, height: size }}
-                  source={{
-                    uri:
-                      response,
-                  }}
-
-        />
-    
+        <View>
+          <FlatList
+                data={this.state.AllFriendsList}
+                renderItem={({item}) => (
+                    <View>
+                      <Text>List of friends: {item.first_name} {item.last_name}</Text>
+                    </View>
+                )}
+                //keyExtractor={(item,index) => item.user_id.toString()}
+              />
+        </View>
       );
     }
   }
 }
 
-export default ProfilePicture;
+export default AllFriends;
