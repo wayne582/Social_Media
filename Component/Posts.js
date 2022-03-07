@@ -48,6 +48,10 @@ class Posts extends Component {
                 return response.json()
             }else if(response.status === 401){
               this.props.navigation.navigate("Login");
+            }else if(response.status === 403){
+              console.log("Can only view posts from your friends or your own posts")
+            }else if(response.status === 404){
+              console.log("Can't be found")
             }else{
                 throw 'Something went wrong';
             }
