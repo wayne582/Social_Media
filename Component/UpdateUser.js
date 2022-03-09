@@ -1,16 +1,16 @@
 import React, {Component} from 'react';
-import {View, Text, FlatList, Button} from 'react-native';
+import {View, Text, StyleSheet, Button} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import Update from "../Component/Update";
 
-class AllFriends extends Component {
+class UpdateScreen extends Component {
   constructor(props){
     super(props);
 
     this.state = {
       isLoading: true,
-      AllFriendsList: []
-
+      listData: []
     }
   }
 
@@ -26,10 +26,10 @@ class AllFriends extends Component {
     this.unsubscribe();
   }
 
-  getAllData = async () => {
+  getData = async () => {
     const token = await AsyncStorage.getItem('@session_token');
     const userId = await AsyncStorage.getItem('@session_id');
-    return fetch("http://localhost:3333/api/1.0.0/user/" + userId +"/friends", {
+    return fetch("http://localhost:3333/api/1.0.0/user/" + userId , {
            method: 'get',
           'headers': {
             'X-Authorization':  token,
@@ -38,29 +38,19 @@ class AllFriends extends Component {
         })
         .then((response) => {
             if(response.status === 200){
-                console.log("Ok")
-                console.log(response)
+                console.log(response);
                 return response.json()
             }else if(response.status === 401){
               this.props.navigation.navigate("Login");
-            }else if(response.status === 403){
-              console.log("You can only view friends of yourself or your friends")
-            }
-            else if(response.status === 404){
-                console.log("You have no friends")
-            }
-            else if(response.status === 500){
-                console.log("Error with server")
-            }
-            
-            else{
+            }else{
                 throw 'Something went wrong';
             }
         })
         .then((responseJson) => {
+          console.log(responseJson);
           this.setState({
             isLoading: false,
-            AllFriendsList: responseJson
+            listData: responseJson
           })
         })
         .catch((error) => {
@@ -68,7 +58,7 @@ class AllFriends extends Component {
         })
   }
 
- checkLoggedIn = async () => {
+  checkLoggedIn = async () => {
     const token = await AsyncStorage.getItem('@session_token');
     if (token == null) {
         this.props.navigation.navigate('Login');
@@ -92,28 +82,35 @@ class AllFriends extends Component {
         </View>
       );
     }else{
+      console.log(this.state.listData)
       return (
-        <View>
-          <FlatList
-                data={this.state.AllFriendsList}
-                renderItem={({item}) => (
-                    <View>
-                      <Text>List of friends: {item.user_givenname} {item.user_familyname}</Text>
+        
+        <View style={styles.inputView}>
+          <Text>Hello {this.state.listData.first_name}</Text>
+          <Text> First Name: {this.state.listData.first_name}</Text>
+          <Text> Last Name: {this.state.listData.last_name}</Text>
+          <Text> Email: {this.state.listData.email}</Text>
+          <Text> Friend Count: {this.state.listData.friend_count}</Text>
 
-                      <Button
-                        title='Friend requests'
-                        onPress={() => this.props.navigation.navigate('Friends')}
-
-                      />
-
-                    </View>
-                )}
-                //keyExtractor={(item,index) => item.user_id.toString()}
-              />
-        </View>
+         <Button 
+         title = "Update details"
+         onPress={() => this.props.navigation.navigate(Update)}/> 
+            
+      </View>
       );
     }
   }
 }
+const styles = StyleSheet.create({
 
-export default AllFriends;
+  inputView: {
+    backgroundColor: "#add8e6",
+    borderRadius: 30,
+    width: "70%",
+    height: 45,
+    marginBottom: 20,
+    alignItems: "center",
+  }
+});
+
+export default UpdateScreen;

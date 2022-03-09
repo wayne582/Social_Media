@@ -17,6 +17,8 @@ class Posts extends Component {
       item_text: '',
       orig_item_text: '',
       item_text_add_post: '',
+      validationPostText: '',
+      postData: []
 
     }
   }
@@ -24,9 +26,9 @@ class Posts extends Component {
   componentDidMount() {
     this.unsubscribe = this.props.navigation.addListener('focus', () => {
       this.checkLoggedIn();
+      this.getPost();
     });
   
-    this.getPost();
   }
 
   componentWillUnmount() {
@@ -48,6 +50,10 @@ class Posts extends Component {
                 return response.json()
             }else if(response.status === 401){
               this.props.navigation.navigate("Login");
+            }else if(response.status === 403){
+              console.log("Can only view posts from your friends or your own posts")
+            }else if(response.status === 404){
+              console.log("Can't be found")
             }else{
                 throw 'Something went wrong';
             }
@@ -217,33 +223,52 @@ class Posts extends Component {
   }
 
   updatePost = async(post_id) => {
-    let to_send = {}
 
-    if (this.state.item_text != this.state.orig_item_text){
-       to_send['item_name'] = this.state.item_text;
-     }
+    if(this.state.post_Text != ""){
+      if (this.state.post_Text != this.state.postData.text){
 
-    console.log(JSON.stringify(to_send));
+        let to_send = {}
+        to_send['text'] = this.state.post_Text
+    
+        console.log(JSON.stringify(to_send));
+    
+        const token = await AsyncStorage.getItem('@session_token');
+        const user_id = await AsyncStorage.getItem('@session_id');
+    
+        fetch("http://localhost:3333/api/1.0.0/user/" + user_id + "/post/" + post_id, {
+            method: 'PATCH',
+            headers: {
+              'X-Authorization':  token,
+              'content-type': 'application/json'
+            },
+            body: JSON.stringify(to_send)
+        })
+        .then((response) => {
+          if(response.status === 200){
+              return response.json()
+          }else if(response.status === 401){
+            this.props.navigation.navigate("Login");
+          }else if(response.status === 403){
+            console.log("Cannot update other peoples posts")
+          }
+          else if(response.status === 404){
+              console.log("post not found")
+          }
+          else if(response.status === 500){
+              console.log("Error with server")
+          }
+          
+          else{
+              throw 'Server Error';
+          }
+      })
+        .catch((error) => {
+          console.log(error);
+        })
+      }
 
-    const token = await AsyncStorage.getItem('@session_token');
-    const user_id = await AsyncStorage.getItem('@session_id');
-
-    fetch("http://localhost:3333/api/1.0.0/user/" + user_id + "/post/" + post_id, {
-        method: 'PATCH',
-        headers: {
-          'X-Authorization':  token,
-          'content-type': 'application/json'
-        },
-        body: JSON.stringify(to_send)
-    })
-    .then((response) => {
-      console.log(response);
-      console.log("Item updated");
-    })
-    .catch((error) => {
-      console.log(error);
-    })
-  }
+      }
+    }
 
   checkLoggedIn = async () => {
     const token = await AsyncStorage.getItem('@session_token');
@@ -254,14 +279,11 @@ class Posts extends Component {
 
   DeletePost = async (post_id) => {
 
-    let to_send = {
-      post_id: parseInt(this.state.id),
-    };
     const token = await AsyncStorage.getItem('@session_token');
     const user_id = await AsyncStorage.getItem('@session_id');
 
     return fetch("http://localhost:3333/api/1.0.0/user/" + user_id + "/post/" + post_id, {
-           method: 'delete',
+           method: 'Delete',
           'headers': {
             'X-Authorization':  token
           }
@@ -271,15 +293,13 @@ class Posts extends Component {
                 return response.json()
             }else if(response.status === 401){
               this.props.navigation.navigate("Login");
+            }else if(response.status === 403){
+              console.log("You can only delete your own posts")
+            }else if(response.status === 404){
+              console.log("Post wasn't found")
             }else{
-                throw 'Can only unlike the posts of your friends';
+                throw 'Something went wrong';
             }
-        })
-        .then((responseJson) => {
-          this.setState({
-            isLoading: false,
-            postSingleList: responseJson
-          })
         })
         .catch((error) => {
             console.log(error);
@@ -331,17 +351,16 @@ class Posts extends Component {
                         onPress={() => this.singlePost(item.post_id)}
                       />    
 
-                  <TextInput
-                    placeholder="Update post"
-                    onChangeText={(item_text) => this.setState({item_text})}
-                    value={this.state.item_text}
-                  />
-
-                  <Button
-                    title="Update"
-                    onPress={() => this.updatePost(item.post_id)}
-                  />
-
+                      <TextInput
+                            onChangeText={(value) => this.setState({post_Text: value})}
+                            defaultValue={this.state.postData.text}
+                        />
+                      <Button
+                            title="Update post"
+                            onPress={(value) => this.setState({editPost: value})}
+                            value={this.state.editPost}
+                            
+                      />
                   <TextInput
                     placeholder="Make a post"
                     onChangeText={(item_text_add_post) => this.setState({item_text_add_post})}
