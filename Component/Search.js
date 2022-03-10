@@ -1,16 +1,17 @@
 import React, {Component} from 'react';
-import {View, Text, FlatList, Button} from 'react-native';
+import {View, Text, FlatList, TextInput, Button} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
-class AllFriends extends Component {
+class HomeScreen extends Component {
   constructor(props){
     super(props);
 
     this.state = {
       isLoading: true,
-      AllFriendsList: []
-
+      listData: [],
+      first_name: "",
+      last_name: ""
     }
   }
 
@@ -26,41 +27,26 @@ class AllFriends extends Component {
     this.unsubscribe();
   }
 
-  getAllData = async () => {
-    const token = await AsyncStorage.getItem('@session_token');
-    const userId = await AsyncStorage.getItem('@session_id');
-    return fetch("http://localhost:3333/api/1.0.0/user/" + userId +"/friends", {
-           method: 'get',
+  getData = async (first_name) => {
+    const value = await AsyncStorage.getItem('@session_token');
+    return fetch("http://localhost:3333/api/1.0.0/search?q=" + first_name, {
           'headers': {
-            'X-Authorization':  token,
-            'Content-Type': 'application/json'
+            'X-Authorization':  value
           }
         })
         .then((response) => {
             if(response.status === 200){
-                console.log("Ok")
-                console.log(response)
                 return response.json()
             }else if(response.status === 401){
               this.props.navigation.navigate("Login");
-            }else if(response.status === 403){
-              console.log("You can only view friends of yourself or your friends")
-            }
-            else if(response.status === 404){
-                console.log("You have no friends")
-            }
-            else if(response.status === 500){
-                console.log("Error with server")
-            }
-            
-            else{
+            }else{
                 throw 'Something went wrong';
             }
         })
         .then((responseJson) => {
           this.setState({
             isLoading: false,
-            AllFriendsList: responseJson
+            listData: responseJson
           })
         })
         .catch((error) => {
@@ -68,15 +54,20 @@ class AllFriends extends Component {
         })
   }
 
- checkLoggedIn = async () => {
-    const token = await AsyncStorage.getItem('@session_token');
-    if (token == null) {
+  
+  handleSearch = (first_name) =>{
+    //validation will be carried out here for the email
+    this.setState({first_name: first_name})
+  }
+
+
+  checkLoggedIn = async () => {
+    const value = await AsyncStorage.getItem('@session_token');
+    if (value == null) {
         this.props.navigation.navigate('Login');
     }
   };
 
-  
-  
   render() {
 
     if (this.state.isLoading){
@@ -94,26 +85,32 @@ class AllFriends extends Component {
     }else{
       return (
         <View>
+          <TextInput        
+                placeholder = 'Search' 
+                onChangeText={this.handleSearch}
+                value = {this.state.first_name}
+              />  
+
+            <Button
+                title="Search"
+                onPress = {() => this.getData(this.state.first_name)}
+            />    
           <FlatList
-                data={this.state.AllFriendsList}
+                data={this.state.listData}
                 renderItem={({item}) => (
                     <View>
-                      <Text>List of friends: {item.user_givenname} {item.user_familyname}</Text>
-
-                      <Button
-                        title='Friend requests'
-                        onPress={() => this.props.navigation.navigate('Friends')}
-
-                      />
-
+                      <Text>{item.user_givenname} {item.user_familyname}</Text>
                     </View>
                 )}
-                //keyExtractor={(item,index) => item.user_id.toString()}
+                keyExtractor={(item,index) => item.user_id.toString()}
               />
         </View>
       );
     }
+    
   }
 }
 
-export default AllFriends;
+
+
+export default HomeScreen;

@@ -1,5 +1,5 @@
 import React, {Component} from 'react';
-import {View, Text, FlatList, Button} from 'react-native';
+import {View, Text, FlatList, Button, ScrollView} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
@@ -9,7 +9,7 @@ class Friends extends Component {
 
     this.state = {
       isLoading: true,
-      friendRequestList: []
+      friendRequestList: [],
 
     }
   }
@@ -17,9 +17,9 @@ class Friends extends Component {
   componentDidMount() {
     this.unsubscribe = this.props.navigation.addListener('focus', () => {
       this.checkLoggedIn();
+      this.getData();
     });
   
-    this.getData();
   }
 
   componentWillUnmount() {
@@ -37,6 +37,7 @@ class Friends extends Component {
         })
         .then((response) => {
             if(response.status === 200){
+              console.log(response)
                 return response.json()
             }else if(response.status === 401){
               this.props.navigation.navigate("Login");
@@ -57,11 +58,13 @@ class Friends extends Component {
         })
   }
 
-  addFriendFunction = async (userId) => {
+  addFriendFunction = async (friendrequestsId) => {
+
+    console.log("Add user")
 
     const token = await AsyncStorage.getItem('@session_token');
     //const userId = await AsyncStorage.getItem('@session_id');
-    return fetch("http://localhost:3333/api/1.0.0/friendrequests/" + userId , {
+    return fetch("http://localhost:3333/api/1.0.0/friendrequests/" + friendrequestsId , {
         method: 'post',
           'headers': {
             'X-Authorization':  token
@@ -73,6 +76,8 @@ class Friends extends Component {
             this.getData()
           }else if (response.status === 401){
             this.props.nagivation.navigate("login");
+          }else if (response.status === 403){
+            console.log("User has already been added")
           }else if (response.status === 404){
             this.props.nagivation.navigate("Nothing has been found");
           }else{
@@ -84,11 +89,11 @@ class Friends extends Component {
         })
       }
   
-  removeFriendFunction = async (userId) => {
-
+  removeFriendFunction = async (friendrequestsId) => {
+    console.log("Remove user")
         const token = await AsyncStorage.getItem('@session_token');
         //const userId = await AsyncStorage.getItem('@session_id');
-        return fetch("http://localhost:3333/api/1.0.0/friendrequests/" + userId, {
+        return fetch("http://localhost:3333/api/1.0.0/friendrequests/" + friendrequestsId, {
             method: 'Delete',
               'headers': {
                 'X-Authorization':  token
@@ -137,23 +142,29 @@ class Friends extends Component {
     }else{
       return (
         <View>
-          <FlatList
+          <ScrollView>
+            <Text>List of friend requests: </Text>
+              <FlatList
                 data={this.state.friendRequestList}
-                renderItem={({item}) => (
-                    <View>
-                      <Text>Friend requests from: {item.first_name} {item.last_name} {item.email}</Text>
-                      <Text>List of friends: {item.first_name} {item.last_name}</Text>
-                      <Button
-                        title="Add Friend request"
-                        onPress={() => this.addFriendFunction(item.user_id)}/>
+                renderItem={({item}) => (                
+                  <View>
+                    <Text>List of friends: {item.first_name} {item.last_name}</Text>
 
-                      <Button
-                        title="Delete Friend request"
-                        onPress={() => this.removeFriendFunction(item.user_id)}/>
-                    </View>
+                    <Button
+                      title='Accept Request'
+                      onPress={() => this.addFriendFunction(item.user_id)}
+                    />
+
+                    <Button
+                      title='Delete Request'
+                      onPress={() => this.removeFriendFunction(item.user_id)}
+                    />
+
+                  </View>
                 )}
-                //keyExtractor={(item,index) => item.user_id.toString()}
+                keyExtractor={(item,index) => item.user_id.toString()}
               />
+          </ScrollView>
         </View>
       );
     }

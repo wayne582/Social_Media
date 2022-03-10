@@ -10,15 +10,9 @@ class Posts extends Component {
     this.state = {
       isLoading: true,
       postList: [],
-      postSingleList: [],
-      post_Text:'',
-      orig_post_text: '',
-      Post_id: '',
-      item_text: '',
-      orig_item_text: '',
-      item_text_add_post: '',
-      validationPostText: '',
-      postData: []
+      postUserId: '',
+      post: '',
+      ID: ''
 
     }
   }
@@ -26,7 +20,9 @@ class Posts extends Component {
   componentDidMount() {
     this.unsubscribe = this.props.navigation.addListener('focus', () => {
       this.checkLoggedIn();
-      this.getPost();
+      //this.getPost();
+      this.getSinglePost;
+
     });
   
   }
@@ -35,25 +31,27 @@ class Posts extends Component {
     this.unsubscribe();
   }
 
-  getPost = async () => {
+  getSinglePost = async () => {
+
+    let to_send = {};
     const token = await AsyncStorage.getItem('@session_token');
-    const id = await AsyncStorage.getItem('@session_id');
-    return fetch("http://localhost:3333/api/1.0.0/user/" + id + "/post" , {
+    const user_id = await AsyncStorage.getItem('@session_id');
+    const post_id = await AsyncStorage.getItem('@post_id');
+    const user_session_id = await AsyncStorage.getItem('@session_token');
+ 
+    return fetch("http://localhost:3333/api/1.0.0/user/" + user_id + "/post/" + post_id, {
            method: 'get',
           'headers': {
             'X-Authorization':  token,
-            'Content-Type': 'application/json'
+            //'content-type': 'application/json'
           }
         })
         .then((response) => {
             if(response.status === 200){
+                console.log(response.json())
                 return response.json()
             }else if(response.status === 401){
               this.props.navigation.navigate("Login");
-            }else if(response.status === 403){
-              console.log("Can only view posts from your friends or your own posts")
-            }else if(response.status === 404){
-              console.log("Can't be found")
             }else{
                 throw 'Something went wrong';
             }
@@ -62,170 +60,15 @@ class Posts extends Component {
           this.setState({
             isLoading: false,
             postList: responseJson,
+            postUserId: responseJson.author.user_id,
+            ID: user_session_id
           })
-          
         })
         .catch((error) => {
             console.log(error);
         })
   }
-
-  addPost = async () => {
-    let to_send = {
-      item_text_add_post: this.state.item_text_add_post,
-    }
-    const token = await AsyncStorage.getItem('@session_token');
-    const id = await AsyncStorage.getItem('@session_id');
-    return fetch("http://localhost:3333/api/1.0.0/user/" + id + "/post" , {
-           method: 'post',
-          'headers': {
-            'X-Authorization':  token,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(to_send)
-        })
-        
-
-      .then((response) => {
-        console.log("check item has been added");
-        Alert.alert("Item added");
-        this.getPost();
-      })
-      .catch((error) => {
-        console.log(error);
-      })
-    }
-
-  getData = async () => {
-      console.log("getting data...");
-      const user_id = await AsyncStorage.getItem('@session_id');
-      const token = await AsyncStorage.getItem('@session_token');
-      return fetch("http://localhost:3333/api/1.0.0/user/" + user_id + "/post", {
-        method: 'get',
-       'headers': {
-        'X-Authorization':  token,
-         'content-type': 'application/json',
-         
-        }
-      })
-      .then((response) => response.json())
-      .then((responseJson) => {
-        console.log("checking");
-        console.log(responseJson);
-          this.setState({
-              isLoading: false,
-              postList: responseJson
-          })
-      })
-      .catch((error) => {
-        console.log('check errors');
-          console.log(error);
-       })
-  }
-
-  singlePost = async (post_id) => {
-
-    let to_send = {
-      post_id: parseInt(this.state.id),
-    };
-    const token = await AsyncStorage.getItem('@session_token');
-    const user_id = await AsyncStorage.getItem('@session_id');
  
-    return fetch("http://localhost:3333/api/1.0.0/user/" + user_id + "/post/" + post_id, {
-           method: 'get',
-          'headers': {
-            'X-Authorization':  token,
-            'content-type': 'application/json'
-          }
-        })
-        .then((response) => {
-            if(response.status === 200){
-                return response.json()
-            }else if(response.status === 401){
-              this.props.navigation.navigate("Login");
-            }else{
-                throw 'Something went wrong';
-            }
-        })
-        .then((responseJson) => {
-          this.setState({
-            isLoading: false,
-            postList: responseJson
-          })
-        })
-        .catch((error) => {
-            console.log(error);
-        })
-  }
-
-  likePost = async (post_id) => {
-
-    let to_send = {
-      post_id: parseInt(this.state.id),
-    };
-    const token = await AsyncStorage.getItem('@session_token');
-    const user_id = await AsyncStorage.getItem('@session_id');
-
-    return fetch("http://localhost:3333/api/1.0.0/user/" + user_id + "/post/" + post_id + "/like", {
-           method: 'post',
-          'headers': {
-            'X-Authorization':  token
-          }
-        })
-        .then((response) => {
-            if(response.status === 200){
-                return response.json()
-            }else if(response.status === 401){
-              this.props.navigation.navigate("Login");
-            }else{
-                throw 'Can only like the posts of your friends';
-            }
-        })
-        .then((responseJson) => {
-          this.setState({
-            isLoading: false,
-            postSingleList: responseJson
-          })
-        })
-        .catch((error) => {
-            console.log(error);
-        })
-  }
-
-  DislikePost = async (post_id) => {
-
-    let to_send = {
-      post_id: parseInt(this.state.id),
-    };
-    const token = await AsyncStorage.getItem('@session_token');
-    const user_id = await AsyncStorage.getItem('@session_id');
-
-    return fetch("http://localhost:3333/api/1.0.0/user/" + user_id + "/post/" + post_id + "/like", {
-           method: 'delete',
-          'headers': {
-            'X-Authorization':  token
-          }
-        })
-        .then((response) => {
-            if(response.status === 200){
-                return response.json()
-            }else if(response.status === 401){
-              this.props.navigation.navigate("Login");
-            }else{
-                throw 'Can only unlike the posts of your friends';
-            }
-        })
-        .then((responseJson) => {
-          this.setState({
-            isLoading: false,
-            postSingleList: responseJson
-          })
-        })
-        .catch((error) => {
-            console.log(error);
-        })
-  }
-
   updatePost = async(post_id) => {
 
         let to_send = {}
