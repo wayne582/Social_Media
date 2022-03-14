@@ -26,7 +26,7 @@ class AllFriends extends Component {
     this.unsubscribe();
   }
 
-  getData = async () => {
+  getAllData = async () => {
     const token = await AsyncStorage.getItem('@session_token');
     const userId = await AsyncStorage.getItem('@session_id');
     return fetch("http://localhost:3333/api/1.0.0/user/" + userId +"/friends", {
@@ -38,6 +38,8 @@ class AllFriends extends Component {
         })
         .then((response) => {
             if(response.status === 200){
+                console.log("Ok")
+                console.log(response)
                 return response.json()
             }else if(response.status === 401){
               this.props.navigation.navigate("Login");
@@ -96,7 +98,14 @@ class AllFriends extends Component {
                 data={this.state.AllFriendsList}
                 renderItem={({item}) => (
                     <View>
-                      <Text>List of friends: {item.first_name} {item.last_name}</Text>
+                      <Text>List of friends: {item.user_givenname} {item.user_familyname}</Text>
+
+                      <Button
+                        title='Friend requests'
+                        onPress={() => this.props.navigation.navigate('Friends')}
+
+                      />
+
                     </View>
                 )}
                 //keyExtractor={(item,index) => item.user_id.toString()}
