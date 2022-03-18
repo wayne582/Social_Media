@@ -9,15 +9,18 @@ class Login extends Component {
 
     this.state = {
       email: '',
-      password: ''
+      password: '',
+      //validationPrompt: '',
     
     }
   }
 
   login = async () => {
-
+    this.setState({
+      validationPrompt: ""
+    })
     //Validation here...
-
+    if (this.state.email.includes("@")){
     return fetch("http://localhost:3333/api/1.0.0/login", {
         method: 'post',
         headers: {
@@ -30,7 +33,12 @@ class Login extends Component {
             return response.json()
             
         }else if(response.status === 400){
-            throw 'Invalid email or password';
+            this.setState({
+              validationPrompt: "Invalid email and/or password supplied"
+            })
+            throw "Invalid email and/or password supplied"
+        }else if(response.status === 500){
+            throw 'Server Error'
         }else{
             throw 'Something went wrong';
         }
@@ -44,6 +52,12 @@ class Login extends Component {
     .catch((error) => {
         console.log(error);
     })
+
+    }else{
+    this.setState({
+      validationPrompt: "Email doesn't contain an @ symbol"
+    })
+  }
 }
 
   handleEmailInput = (email) =>{
@@ -86,14 +100,7 @@ class Login extends Component {
           />
         </View>
       
-        <TouchableOpacity>
-          <Text style={styles.forgot_button}>Forgot Password?</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity>
-          <Text style={styles.signUp_button}>Sign Up</Text>
-        </TouchableOpacity>
-
+      
         <Button
           title="Sign Up"
           color="#87cefa"

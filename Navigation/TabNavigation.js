@@ -10,8 +10,11 @@ import ProfileScreen from "../Component/ProfileScreen";
 //import UpdateUserScreen from "../Component/UpdateUser";
 import SearchScreen from "../Component/Search";
 import FriendsScreen from "../Component/Friends";
+//import FriendsScreen from "../Component/AllFriends";
 import UpdateUserScreen from "../Component/Update";
-import ProfilePicture from "../Component/ProfilePicture";
+//import ProfilePicture from "../Component/ProfilePicture";
+import ProfilePicture from "../Component/UserProfile";
+//import ProfilePicture from "../Component/UpdateUserDetails";
 import PostScreen from "../Component/Posts";
 //import ListScreen from "../Component/ListFriends";
 
@@ -22,7 +25,7 @@ const BottomTabNavigator = () => {
     <Tab.Navigator screenOptions = {
         {headerShown: false, 
         tabBarShowLabel: true,
-        tabBarStyle: {backgroundColor: '#e2e6e1'},
+        tabBarStyle: {backgroundColor: '#ffffff'},
         tabBarInactiveTintColor:'#fff',
     }
         }>
@@ -44,7 +47,8 @@ const BottomTabNavigator = () => {
             },
           }}
         />
-           <Tab.Screen
+      
+          <Tab.Screen
           name="Friends"
           component={FriendsScreen}
           options={{
@@ -56,6 +60,25 @@ const BottomTabNavigator = () => {
                   source={{
                     uri:
                       'https://static.thenounproject.com/png/28129-200.png',
+                  }}
+                />
+              );
+            },
+          }}
+        />
+
+          <Tab.Screen
+          name="Search"
+          component={SearchScreen}
+          options={{
+            title: 'Search',
+            tabBarIcon: ({size,focused,color}) => {
+              return (
+                <Image
+                  style={{ width: size, height: size }}
+                  source={{
+                    uri:
+                      'https://www.freeiconspng.com/thumbs/search-icon-png/search-icon-png-5.png',
                   }}
                 />
               );

@@ -1,6 +1,8 @@
 import React, {Component} from 'react';
-import {View, Text, FlatList, Button, Alert, TextInput} from 'react-native';
+import {View, Text, FlatList, Button, Alert, TextInput, StyleSheet, TouchableOpacity} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Icon } from 'react-native-elements';
+import { FontAwesome } from '@expo/vector-icons';
 
 
 class Posts extends Component {
@@ -17,6 +19,8 @@ class Posts extends Component {
       item_text: '',
       orig_item_text: '',
       item_text_add_post: '',
+      validationPostText: '',
+      postData: []
 
     }
   }
@@ -24,9 +28,9 @@ class Posts extends Component {
   componentDidMount() {
     this.unsubscribe = this.props.navigation.addListener('focus', () => {
       this.checkLoggedIn();
+      this.getPost();
     });
   
-    this.getPost();
   }
 
   componentWillUnmount() {
@@ -48,6 +52,10 @@ class Posts extends Component {
                 return response.json()
             }else if(response.status === 401){
               this.props.navigation.navigate("Login");
+            }else if(response.status === 403){
+              console.log("Can only view posts from your friends or your own posts")
+            }else if(response.status === 404){
+              console.log("Can't be found")
             }else{
                 throw 'Something went wrong';
             }
@@ -55,8 +63,9 @@ class Posts extends Component {
         .then((responseJson) => {
           this.setState({
             isLoading: false,
-            postList: responseJson
+            postList: responseJson,
           })
+          
         })
         .catch((error) => {
             console.log(error);
@@ -92,10 +101,13 @@ class Posts extends Component {
   getData = async () => {
       console.log("getting data...");
       const user_id = await AsyncStorage.getItem('@session_id');
+      const token = await AsyncStorage.getItem('@session_token');
       return fetch("http://localhost:3333/api/1.0.0/user/" + user_id + "/post", {
         method: 'get',
        'headers': {
-         'content-type': 'application/json'
+        'X-Authorization':  token,
+         'content-type': 'application/json',
+         
         }
       })
       .then((response) => response.json())
@@ -217,33 +229,46 @@ class Posts extends Component {
   }
 
   updatePost = async(post_id) => {
-    let to_send = {}
 
-    if (this.state.item_text != this.state.orig_item_text){
-       to_send['item_name'] = this.state.item_text;
-     }
-
-    console.log(JSON.stringify(to_send));
-
-    const token = await AsyncStorage.getItem('@session_token');
-    const user_id = await AsyncStorage.getItem('@session_id');
-
-    fetch("http://localhost:3333/api/1.0.0/user/" + user_id + "/post/" + post_id, {
-        method: 'PATCH',
-        headers: {
-          'X-Authorization':  token,
-          'content-type': 'application/json'
-        },
-        body: JSON.stringify(to_send)
-    })
-    .then((response) => {
-      console.log(response);
-      console.log("Item updated");
-    })
-    .catch((error) => {
-      console.log(error);
-    })
-  }
+        let to_send = {}
+        //to_send['text'] = this.state.post_Text
+    
+        console.log(JSON.stringify(to_send));
+    
+        const token = await AsyncStorage.getItem('@session_token');
+        const user_id = await AsyncStorage.getItem('@session_id');
+    
+        fetch("http://localhost:3333/api/1.0.0/user/" + user_id + "/post/" + post_id, {
+            method: 'PATCH',
+            headers: {
+              'X-Authorization':  token,
+              'content-type': 'application/json'
+            },
+            body: JSON.stringify(to_send)
+        })
+        .then((response) => {
+          if(response.status === 200){
+              return response.json()
+          }else if(response.status === 401){
+            this.props.navigation.navigate("Login");
+          }else if(response.status === 403){
+            console.log("Cannot update other peoples posts")
+          }
+          else if(response.status === 404){
+              console.log("post not found")
+          }
+          else if(response.status === 500){
+              console.log("Error with server")
+          }
+          
+          else{
+              throw 'Server Error';
+          }
+      })
+        .catch((error) => {
+          console.log(error);
+        })
+      }
 
   checkLoggedIn = async () => {
     const token = await AsyncStorage.getItem('@session_token');
@@ -254,14 +279,11 @@ class Posts extends Component {
 
   DeletePost = async (post_id) => {
 
-    let to_send = {
-      post_id: parseInt(this.state.id),
-    };
     const token = await AsyncStorage.getItem('@session_token');
     const user_id = await AsyncStorage.getItem('@session_id');
 
     return fetch("http://localhost:3333/api/1.0.0/user/" + user_id + "/post/" + post_id, {
-           method: 'delete',
+           method: 'Delete',
           'headers': {
             'X-Authorization':  token
           }
@@ -271,15 +293,13 @@ class Posts extends Component {
                 return response.json()
             }else if(response.status === 401){
               this.props.navigation.navigate("Login");
+            }else if(response.status === 403){
+              console.log("You can only delete your own posts")
+            }else if(response.status === 404){
+              console.log("Post wasn't found")
             }else{
-                throw 'Can only unlike the posts of your friends';
+                throw 'Something went wrong';
             }
-        })
-        .then((responseJson) => {
-          this.setState({
-            isLoading: false,
-            postSingleList: responseJson
-          })
         })
         .catch((error) => {
             console.log(error);
@@ -287,8 +307,9 @@ class Posts extends Component {
   }
 
 
-  render() {
 
+  render() {
+    
     if (this.state.isLoading){
       return (
         <View
@@ -303,65 +324,213 @@ class Posts extends Component {
       );
     }else{
       return (
-        <View>
-          <FlatList
-                data={this.state.postList}
-                renderItem={({item}) => (
+        <View style = {styles.container} >
+
+          <Text style = {styles.title}> Discover something new with Spacebook </Text>
+
+            <FlatList
+              data={this.state.postList}
+              renderItem={({item}) => (
                     
-                    <View>
-                      <Text>Posts from: {item.text} </Text>
+                <View style = {styles.postContainer}>
+                    
+                  <Text style = {styles.text}>
+                    {item.text} 
+                  </Text>
 
-                      <Button
-                        title="Like post"
-                        onPress={() => this.likePost(item.post_id)}
-                      />
+                  <Text>
+                    {item.user_givenname} 
+                    {item.user_familyname}
+                  </Text>
+                    
+                  <TouchableOpacity
+                    //style={styles.likePostButton}
+                    style={styles.postButton}
+                    onPress={() => this.likePost(item.post_id)}
+                  >
+                  <FontAwesome name="thumbs-o-up" size={30} color="black" />
+                  
+                  </TouchableOpacity>
 
-                      <Button
-                        title="Dislike post"
-                        onPress={() => this.DislikePost(item.post_id)}
-                      />
+                    <TouchableOpacity
+                    
+                      style={styles.postButton}
+                      onPress={() => this.DislikePost(item.post_id)}
+                    >
+                    <FontAwesome name="thumbs-o-down" size={30} color="black" />
+                  </TouchableOpacity>
 
-                      <Button
-                        title="Delete post"
-                        onPress={() => this.DeletePost(item.post_id)}
-                      />  
+                  <TouchableOpacity
+                    style={styles.updateButton}
+                    onPress={() => {this.props.navigation.navigate("UpdatePost"); }}
+                  >
+                  <FontAwesome name="pencil" size={20} color="black" />
+                  
+                  </TouchableOpacity>
 
-                      <Button
-                        title="See post"
-                        onPress={() => this.singlePost(item.post_id)}
-                      />    
-
-                  <TextInput
-                    placeholder="Update post"
-                    onChangeText={(item_text) => this.setState({item_text})}
-                    value={this.state.item_text}
-                  />
-
-                  <Button
-                    title="Update"
-                    onPress={() => this.updatePost(item.post_id)}
-                  />
-
-                  <TextInput
-                    placeholder="Make a post"
-                    onChangeText={(item_text_add_post) => this.setState({item_text_add_post})}
-                    value={this.state.item_text_add_post}
-                  />
-
-                  <Button
-                    title="Share your thoughts"
-                    onPress={() => this.addPost()}
-                  />
-
-                  </View>
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={() => this.DeletePost(item.post_id)}
+                  >
+                  <FontAwesome name="trash" size={20} color="black" />
+                  
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={styles.singlePostButton}
+                    onPress={async () => {
+                      
+                    await AsyncStorage.setItem('@post_id', item.post_id)
+                    this.props.navigation.navigate("SinglePost"); 
+                  
+                  }}
+                  >
+                  <FontAwesome name="binoculars" size={15} color="black" />
+                  
+                  </TouchableOpacity>
+                    
+            </View>
                 )}
                 keyExtractor={(item,index) => item.id}
-              />        
+              />
+          <View style = {styles.bottomContainer}>
+          
+          <TouchableOpacity
+            onPress={() => {this.props.navigation.navigate("addAPostScreen"); }}
+            style={{
+              borderBottomColor:this.state.popularSelected ? "#044244":"#FFF",
+              borderBottomWidth:4,
+              paddingVertical:6
+            }}
+            >
+            <Text style={{
+              fontFamily:"Bold",
+              color:this.state.popularSelected ? "#044244":"#9ca1a2"
+            }}>SHARE POST</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={async () => {
+                await AsyncStorage.setItem('@post_id', item.post_id)
+                this.props.navigation.navigate("SinglePost")
+              }}      
+              style={{
+                borderBottomColor:this.state.popularSelected ? "#FFF":"#044244",
+                borderBottomWidth:4,
+                paddingVertical:6,
+                marginLeft:30
+              }}
+              >
+              <Text style={{
+                fontFamily:"Bold",
+                color:this.state.popularSelected ? "#9ca1a2":"#044244"
+              }}>SEE POST</Text>
+            </TouchableOpacity>
+            
+
+          </View>
                     
         </View>
       );
-    }
   }
+  
 }
+}
+
+const styles = StyleSheet.create({
+
+  container: {
+    flex: 1,
+    height:"100%",
+    backgroundColor:"#e8f3ec",  
+   },
+
+   text: {
+    fontFamily:"Bold",
+    color: "Black",
+    fontFamily: 'notoserif',
+    fontWeight: 'normal',
+    fontSize: 22,
+   },
+
+   bottomContainer: {
+    backgroundColor:"#FFF",
+    borderTopLeftRadius:30,
+    borderTopRightRadius:30,
+    height:90,
+    paddingHorizontal:35
+   },
+
+   SharePostButton: {
+    alignItems: "center",
+    backgroundColor: "#DDDDDD",
+    padding: 10
+  },
+
+  title: {
+    fontFamily:"Bold",
+    fontSize:22,
+    color:"black",
+    paddingVertical:25,
+    fontFamily: 'Courier New',
+    fontWeight: 'normal',
+  },
+
+  //post container styling
+  postContainer: {
+    //flex: 1,
+    height: 80,
+    backgroundColor: 'white',
+    //alignItems: 'center',
+    justifyContent: 'center',
+    //borderBottomColor: 'black',
+    //borderWidth: 1,
+    flexDirection: 'row',
+    shadowColor: "#000000",
+    shadowOpacity: 0.8,
+    shadowRadius: 2,
+    shadowOffset: {
+      height: 1,
+      width: 1
+    }
+    
+  },
+
+  postButton:  {
+    //height:"100%",
+    flex: 1, 
+    right: -10,
+    top: 5,
+    flexDirection:"row",
+    //alignItems:'center',
+    justifyContent: "flex-end",
+  },
+
+  updateButton: { 
+    //flex: 1, 
+    right: 340,
+    top: 30,
+    flexDirection:"row",
+    alignItems:'center',
+    justifyContent: "flex-end",
+  },
+
+  deleteButton: {
+    right: 335,
+    top: 30,
+    flexDirection:"row",
+    alignItems:'center',
+    justifyContent: "flex-end",
+  },
+
+  singlePostButton: { 
+    right: 328,
+    top: 63,
+    flexDirection:"row",
+    //alignItems:'center',
+    justifyContent: "flex-end",
+  }
+  
+});
 
 export default Posts;
